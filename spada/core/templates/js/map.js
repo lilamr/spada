@@ -267,15 +267,25 @@ function _renderMapToCanvas(mapEl, cb) {
   const out = document.createElement('canvas'); out.width = W * 2; out.height = H * 2;
   const ctx = out.getContext('2d'); ctx.scale(2, 2);
   ctx.fillStyle = '#0f1117'; ctx.fillRect(0, 0, W, H);
-  /* Tile images */
+
+  /* Tile images — skip jika cross-origin (akan menyebabkan canvas tainted) */
   const mapRect = mapEl.getBoundingClientRect();
-  Array.from(mapEl.querySelectorAll('.leaflet-tile'))
-    .filter(img => img.complete && img.naturalWidth > 0)
-    .forEach(img => {
-      const r = img.getBoundingClientRect();
-      try { ctx.drawImage(img, r.left - mapRect.left, r.top - mapRect.top, r.width, r.height); } catch(e) {}
+  const tileImgs = Array.from(mapEl.querySelectorAll('.leaflet-tile'))
+    .filter(img => {
+      if (!img.complete || img.naturalWidth === 0) return false;
+      try {
+        /* Cek apakah same-origin — tile CDN akan throw saat drawImage */
+        const url = new URL(img.src);
+        return url.origin === window.location.origin;
+      } catch(e) { return false; }
     });
-  /* SVG vector layers */
+
+  tileImgs.forEach(img => {
+    const r = img.getBoundingClientRect();
+    try { ctx.drawImage(img, r.left - mapRect.left, r.top - mapRect.top, r.width, r.height); } catch(e) {}
+  });
+
+  /* SVG vector layers — aman karena generated locally */
   const svgEls = Array.from(mapEl.querySelectorAll('svg'));
   Promise.all(svgEls.map(svg => new Promise(res => {
     const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
