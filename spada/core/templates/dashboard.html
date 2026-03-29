@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>{title}</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>{title}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>{css}</style>
+</head>
+<body>
+<div id="hdr">
+  <div class="logo-w">
+    {logo_tag}
+    <div>
+      <div class="logo-text">{app_name}</div>
+      <div class="logo-sub">{app_sub}</div>
+    </div>
+  </div>
+  <div class="sep"></div>
+  <span id="map-title">{title}</span>
+</div>
+<div id="tabnav">
+  <button class="tab active" onclick="switchTab('map')">🗺 Peta Tematik</button>
+  <button class="tab" onclick="switchTab('attr')">📊 Atribut</button>
+  <button class="tab" onclick="switchTab('pivot')">📋 Pivot Table</button>
+  <button class="tab" onclick="switchTab('chart')">📈 Chart</button>
+  <button class="tab" onclick="switchTab('vm')">🌍 Visual Map</button>
+</div>
+<div id="main">
+  <div id="sidebar">
+    <div class="sb-hdr">
+      <span class="sb-title">Layer</span>
+      <button id="btn-sb" onclick="toggleSidebar()" title="Ctrl+B">◀</button>
+    </div>
+    <div id="layer-list"></div>
+  </div>
+  <button id="btn-sb-float" onclick="toggleSidebar()" title="Tampilkan sidebar">▶</button>
+  <div id="map-view">
+    <div id="map"></div>
+    <div id="map-export-overlay"><div class="ov-title">Legenda</div><div id="ov-items"></div></div>
+    <div id="map-export-scale"></div>
+    <div class="map-dl-bar"><button class="map-dl-btn" onclick="dlMapPng()">⬇ PNG</button></div>
+    <select id="basemap-sel" onchange="changeBasemap(this.value)" title="Basemap membutuhkan koneksi internet">
+      <option value="cd">🌑 CartoDB Dark</option>
+      <option value="osm">🗺 OpenStreetMap</option>
+      <option value="cl">☀️ CartoDB Light</option>
+      <option value="esri">🛰 ESRI Satellite</option>
+      <option value="topo">🏔 OpenTopo</option>
+    </select>
+  </div>
+  <div id="attr-view" style="display:none">
+    <div id="attr-ctrl">
+      <div class="ct-title">🔍 Filter <button class="ctrl-toggle" onclick="toggleCtrl('attr-ctrl','attr-restore')">◀</button></div>
+      <div class="ct-grp"><label class="ct-lbl">Layer</label>
+        <select class="ct-sel" id="attr-lyr" onchange="loadTable()"><option value="">— Layer —</option></select></div>
+      <div class="ct-grp"><label class="ct-lbl">Kolom</label>
+        <select class="ct-sel" id="filter-col"></select></div>
+      <div class="ct-grp"><label class="ct-lbl">Operator</label>
+        <select class="ct-sel" id="filter-op">
+          <option value="contains">Mengandung</option><option value="eq">= Sama</option>
+          <option value="neq">≠ Beda</option><option value="gt">&gt; Lebih</option>
+          <option value="lt">&lt; Kurang</option><option value="gte">≥ Lebih/sama</option>
+          <option value="lte">≤ Kurang/sama</option><option value="startswith">Dimulai</option>
+          <option value="endswith">Diakhiri</option><option value="empty">Kosong</option>
+          <option value="notempty">Tidak kosong</option>
+        </select></div>
+      <div class="ct-grp"><label class="ct-lbl">Nilai</label>
+        <input class="ct-sel" id="filter-val" type="text" placeholder="Nilai filter..."></div>
+      <button class="btn-f btn-rnd" onclick="applyFilter()">Terapkan</button>
+      <button class="btn-f btn-dl2" onclick="resetFilter()">Reset Filter</button>
+      <button class="btn-f btn-dl2" onclick="syncMapFilter()">🗺 Zoom ke Filter</button>
+      <button class="btn-f btn-dl2" onclick="dlAttrCsv()">⬇ CSV</button>
+      <span class="cnt" id="attr-cnt" style="text-align:center;display:block;margin-top:2px;"></span>
+    </div>
+    <button class="ctrl-restore" id="attr-restore" onclick="toggleCtrl('attr-ctrl','attr-restore')">▶</button>
+    <div id="attr-area">
+      <div id="table-wrap"><table id="attr-table"><thead id="at-head"></thead><tbody id="at-body"></tbody></table></div>
+    </div>
+  </div>
+  <div id="pivot-view" style="display:none">
+    <div id="pv-ctrl">
+      <div class="ct-title">📋 Pivot <button class="ctrl-toggle" onclick="toggleCtrl('pv-ctrl','pv-restore')">◀</button></div>
+      <div class="ct-grp"><label class="pv-lbl">Layer</label>
+        <select class="pv-sel" id="pv-lyr" onchange="updatePivotFields()"></select></div>
+      <div class="ct-grp"><label class="pv-lbl">Baris</label><select class="pv-sel" id="pv-row"></select></div>
+      <div class="ct-grp"><label class="pv-lbl">Kolom</label>
+        <select class="pv-sel" id="pv-col"><option value="">(Tidak ada)</option></select></div>
+      <div class="ct-grp"><label class="pv-lbl">Nilai</label><select class="pv-sel" id="pv-val"></select></div>
+      <div class="ct-grp"><label class="pv-lbl">Agregasi</label>
+        <select class="pv-sel" id="pv-agg">
+          <option value="count">Count</option><option value="sum">Sum</option>
+          <option value="mean">Mean</option><option value="min">Min</option><option value="max">Max</option>
+        </select></div>
+      <div class="ct-grp"><label class="pv-lbl">Heatmap</label>
+        <select class="pv-sel" id="pv-hm">
+          <option value="none">Tidak</option><option value="row">Per Baris</option>
+          <option value="col">Per Kolom</option><option value="all">Global</option>
+        </select></div>
+      <button class="btn-f btn-rnd" onclick="renderPivot()">Buat</button>
+      <button class="btn-f btn-dl2" onclick="dlPivotCsv()">⬇ CSV</button>
+    </div>
+    <button class="ctrl-restore" id="pv-restore" onclick="toggleCtrl('pv-ctrl','pv-restore')">▶</button>
+    <div id="pivot-area">
+      <div id="pivot-wrap"><table id="pt"><thead id="pt-head"></thead><tbody id="pt-body"></tbody></table></div>
+    </div>
+  </div>
+  <div id="chart-view" style="display:none">
+    <div id="chart-ctrl">
+      <div class="ct-title">⚙ Konfigurasi <button class="ctrl-toggle" onclick="toggleCtrl('chart-ctrl','ch-restore')">◀</button></div>
+      <div class="ct-grp"><label class="ct-lbl">Layer</label>
+        <select class="ct-sel" id="ch-lyr" onchange="updateChartFields()"></select></div>
+      <div class="ct-grp"><label class="ct-lbl">Tipe</label>
+        <select class="ct-sel" id="ch-type">
+          <option value="bar">📊 Bar</option><option value="horizontalBar">↔ Horizontal Bar</option>
+          <option value="pie">🥧 Pie</option><option value="doughnut">🍩 Doughnut</option>
+          <option value="line">📈 Line</option><option value="scatter">⚡ Scatter</option>
+        </select></div>
+      <div class="ct-grp"><label class="ct-lbl">Field X</label><select class="ct-sel" id="ch-x"></select></div>
+      <div class="ct-grp"><label class="ct-lbl">Field Y</label><select class="ct-sel" id="ch-y"></select></div>
+      <div class="ct-grp"><label class="ct-lbl">Agregasi</label>
+        <select class="ct-sel" id="ch-agg">
+          <option value="count">Count</option><option value="sum">Sum</option>
+          <option value="mean">Mean</option><option value="min">Min</option><option value="max">Max</option>
+        </select></div>
+      <button class="btn-f btn-rnd" onclick="renderChart()">🎨 Buat Grafik</button>
+      <button class="btn-f btn-dl2" onclick="sortChart()">⇅ Sort Nilai</button>
+      <button class="btn-f btn-dl2" onclick="dlChartPng()">⬇ PNG</button>
+      <button class="btn-f btn-dl2" onclick="dlChartSvg()">⬇ SVG</button>
+    </div>
+    <button class="ctrl-restore" id="ch-restore" onclick="toggleCtrl('chart-ctrl','ch-restore')">▶</button>
+    <div id="chart-area"><canvas id="chart-canvas"></canvas></div>
+  </div>
+  <div id="vm-view" style="display:none">
+    <div id="vm-ctrl">
+      <div class="ct-title">🌍 Tipe Peta <button class="ctrl-toggle" onclick="toggleCtrl('vm-ctrl','vm-restore')">◀</button></div>
+      <div class="ct-grp">
+        <select class="ct-sel" id="vm-type" onchange="updateVmFields()">
+          <option value="heatmap">🔥 Heatmap</option>
+          <option value="cluster">📍 Cluster Map</option>
+          <option value="proportional">⭕ Proportional Symbol</option>
+          <option value="choropleth">🗺 Choropleth</option>
+          <option value="hexbin">⬡ Hexbin / Grid</option>
+          <option value="dotdensity">· Dot Density</option>
+          <option value="cartogram">🫧 Cartogram (Dorling)</option>
+          <option value="timeseries">⏱ Time Series</option>
+          <option value="flow">➡ Flow Map</option>
+        </select>
+      </div>
+      <div class="ct-grp"><label class="ct-lbl">Layer</label>
+        <select class="ct-sel" id="vm-lyr" onchange="updateVmFields()"></select></div>
+      <div id="vm-field-wrap" style="display:flex;flex-direction:column;gap:9px;">
+        <div class="ct-grp" id="vm-val-grp"><label class="ct-lbl">Field Nilai</label>
+          <select class="ct-sel" id="vm-val"></select></div>
+        <div class="ct-grp" id="vm-time-grp" style="display:none"><label class="ct-lbl">Field Waktu</label>
+          <select class="ct-sel" id="vm-time"></select></div>
+        <div class="ct-grp" id="vm-from-grp" style="display:none"><label class="ct-lbl">Field Asal</label>
+          <select class="ct-sel" id="vm-from"></select></div>
+        <div class="ct-grp" id="vm-to-grp" style="display:none"><label class="ct-lbl">Field Tujuan</label>
+          <select class="ct-sel" id="vm-to"></select></div>
+        <div class="ct-grp" id="vm-pal-grp"><label class="ct-lbl">Palet</label>
+          <select class="ct-sel" id="vm-pal">
+            <option value="Blues">Blues</option><option value="Reds">Reds</option>
+            <option value="Greens">Greens</option><option value="Oranges">Oranges</option>
+            <option value="Purples">Purples</option><option value="Viridis">Viridis</option>
+            <option value="YlOrRd">YlOrRd</option><option value="Spectral">Spectral</option>
+          </select></div>
+        <div class="ct-grp" id="vm-res-grp" style="display:none"><label class="ct-lbl">Resolusi Grid</label>
+          <select class="ct-sel" id="vm-res">
+            <option value="0.5">0.5°</option><option value="1">1°</option>
+            <option value="2">2°</option><option value="0.25">0.25°</option>
+          </select></div>
+      </div>
+      <button class="btn-f btn-rnd" onclick="renderVisualMap()">🎨 Buat</button>
+      <button class="btn-f btn-dl2" onclick="dlVmPng()">⬇ PNG</button>
+      <div id="vm-time-ctrl" style="display:none;margin-top:6px;">
+        <label class="ct-lbl">Waktu: <span id="vm-time-lbl">—</span></label>
+        <input type="range" id="vm-slider" style="width:100%;margin-top:4px;" oninput="onVmSlider(this.value)">
+      </div>
+    </div>
+    <button class="ctrl-restore" id="vm-restore" onclick="toggleCtrl('vm-ctrl','vm-restore')">▶</button>
+    <div id="vm-map">
+      <div id="vmap"></div>
+      <div id="vm-export-overlay"><div class="ov-title">Legenda</div><div id="vm-ov-items"></div></div>
+      <div id="vm-export-scale"></div>
+      <div class="vm-dl-bar"><button class="map-dl-btn" onclick="dlVmPng()">⬇ PNG</button></div>
+      <select id="vm-basemap-sel" onchange="changeVmBasemap(this.value)" title="Basemap membutuhkan koneksi internet">
+        <option value="cd">🌑 CartoDB Dark</option>
+        <option value="osm">🗺 OpenStreetMap</option>
+        <option value="cl">☀️ CartoDB Light</option>
+        <option value="esri">🛰 ESRI Satellite</option>
+        <option value="topo">🏔 OpenTopo</option>
+      </select>
+    </div>
+  </div>
+</div>
+<div id="sb">
+  <span id="sb-coords">Lat: —  Lon: —</span>
+  <span id="sb-lyr"></span>
+  <span id="sb-filter" style="color:var(--wa)"></span>
+</div>
+<script>
+/* ── Data injected by Python ── */
+const LAYERS   = {layers_json};
+const PALETTES = {palettes_json};
+</script>
+<script>{js}</script>
+</body>
+</html>

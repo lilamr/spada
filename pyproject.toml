@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "spada"
+version = "1.0.0"
+description = "SpaDa — Spasial Dashboard: Aplikasi desktop untuk visualisasi data spasial interaktif"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["gis", "spatial", "dashboard", "leaflet", "geospatial", "visualization", "pyqt5"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Environment :: X11 Applications :: Qt",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "PyQt5>=5.15.0",
+    "PyQtWebEngine>=5.15.0",
+    "geopandas>=0.14.0",
+    "fiona>=1.9.0",
+    "shapely>=2.0.0",
+    "pyproj>=3.5.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+]
+
+[project.scripts]
+spada = "main:main"
+
+[project.urls]
+Homepage   = "https://github.com/lilamr/spada"
+Repository = "https://github.com/lilamr/spada"
+Issues     = "https://github.com/lilamr/spada/issues"
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["spada*"]
+
+[tool.ruff]
+line-length    = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E501"]
+
+[tool.black]
+line-length    = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts   = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["spada"]
+omit   = ["tests/*", "main.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

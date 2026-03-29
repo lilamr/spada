@@ -1,0 +1,29 @@
+/* SpaDa — PIVOT styles */
+
+#pivot-view{flex:1;display:flex;overflow:hidden;}
+
+#pv-ctrl{width:220px;background:var(--sf);border-right:1px solid var(--bd);padding:10px;overflow-y:auto;display:flex;flex-direction:column;gap:9px;flex-shrink:0;transition:width .22s,padding .22s;}
+
+#pv-ctrl.collapsed{width:0;padding:0;overflow:hidden;}
+
+#pivot-area{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px;gap:8px;}
+
+.pv-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--tx3);white-space:nowrap;}
+
+.pv-sel{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:3px 7px;border-radius:4px;font-size:10px;font-family:inherit;cursor:pointer;width:100%;}
+
+#pivot-wrap{flex:1;overflow:auto;border:1px solid var(--bd);border-radius:6px;}
+
+#pt{width:100%;border-collapse:collapse;font-size:10px;}
+
+#pt th{background:var(--sf);padding:6px 10px;text-align:left;font-weight:700;font-size:8px;text-transform:uppercase;letter-spacing:.6px;color:var(--tx3);border-bottom:1px solid var(--bd);position:sticky;top:0;white-space:nowrap;z-index:1;}
+
+#pt th.rh{text-align:right;}
+
+#pt td{padding:5px 10px;border-bottom:1px solid rgba(45,50,80,.3);color:var(--tx2);white-space:nowrap;}
+
+#pt td.vc{text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;}
+
+#pt td.rc{text-align:right;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ac2);font-weight:600;}
+
+#pt td.cl{font-weight:600;color:var(--tx);}

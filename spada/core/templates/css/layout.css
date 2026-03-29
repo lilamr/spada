@@ -1,0 +1,77 @@
+/* SpaDa — LAYOUT styles */
+
+#sidebar{width:256px;background:var(--sf);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:width .22s ease;}
+
+#sidebar.collapsed{width:0;}
+
+.sb-hdr{padding:7px 9px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+
+.sb-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--tx3);}
+
+#btn-sb{background:none;border:1px solid var(--bd);color:var(--tx3);cursor:pointer;font-size:11px;padding:1px 6px;border-radius:4px;line-height:1.6;}
+
+#btn-sb:hover{border-color:var(--ac);color:var(--ac2);}
+
+#btn-sb-float{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:2000;background:var(--sf);border:1px solid var(--bd);border-left:none;border-radius:0 6px 6px 0;color:var(--ac2);cursor:pointer;font-size:13px;padding:8px 6px;display:none;box-shadow:3px 0 12px rgba(0,0,0,.4);}
+
+#btn-sb-float:hover{background:var(--ac);color:#fff;}
+
+#layer-list{overflow-y:auto;flex-shrink:0;max-height:210px;}
+
+.layer-item{border-bottom:1px solid rgba(45,50,80,.4);}
+
+.layer-head{padding:8px 9px;display:flex;align-items:center;gap:6px;cursor:pointer;transition:background .12s;}
+
+.layer-head:hover{background:var(--sf2);}
+
+.layer-head.active{background:rgba(99,102,241,.12);border-left:2px solid var(--ac);padding-left:7px;}
+
+.layer-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+.layer-name{font-size:11px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.layer-badge{font-size:8px;color:var(--tx3);background:var(--sf2);padding:1px 4px;border-radius:7px;border:1px solid var(--bd);white-space:nowrap;}
+
+.layer-vis{font-size:12px;cursor:pointer;color:var(--tx3);flex-shrink:0;}
+
+.layer-vis.on{color:var(--ac2);}
+
+.layer-leg-toggle{font-size:10px;color:var(--tx3);cursor:pointer;flex-shrink:0;transition:transform .15s;user-select:none;}
+
+.layer-leg-toggle.open{transform:rotate(180deg);}
+
+.layer-legend{padding:5px 9px 7px 20px;border-top:1px solid rgba(45,50,80,.3);display:none;}
+
+.layer-legend.open{display:block;}
+
+#map-view{flex:1;display:flex;overflow:hidden;position:relative;}
+
+#map{flex:1;}
+
+#basemap-sel{position:absolute;bottom:20px;right:10px;z-index:999;background:var(--sf);border:1px solid var(--bd);border-radius:7px;padding:5px 9px;font-size:10px;color:var(--tx);font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);}
+
+.map-dl-bar{position:absolute;top:8px;right:10px;z-index:999;display:flex;gap:4px;}
+
+.map-dl-btn{background:var(--sf);border:1px solid var(--bd);color:var(--tx2);padding:4px 9px;border-radius:5px;font-size:9px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
+
+.map-dl-btn:hover{border-color:var(--ac);color:var(--ac2);}
+
+.ctrl-toggle{background:none;border:1px solid var(--bd);color:var(--tx3);cursor:pointer;font-size:10px;padding:1px 5px;border-radius:3px;line-height:1.5;flex-shrink:0;}
+
+.ctrl-toggle:hover{border-color:var(--ac);color:var(--ac2);}
+
+/* Float restore button for collapsed ctrl panels */
+.ctrl-restore{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:100;background:var(--sf);border:1px solid var(--bd);border-left:none;border-radius:0 5px 5px 0;color:var(--ac2);cursor:pointer;font-size:11px;padding:8px 5px;display:none;box-shadow:2px 0 8px rgba(0,0,0,.3);}
+
+.ctrl-restore:hover{background:var(--ac);color:#fff;}
+
+/* Map export overlay — legenda + skala muncul saat download PNG */
+#map-export-overlay{position:absolute;bottom:36px;left:8px;z-index:9999;background:rgba(26,29,39,.92);border:1px solid #2d3250;border-radius:7px;padding:8px 10px;min-width:120px;max-width:220px;pointer-events:none;display:none;}
+
+#map-export-overlay .ov-title{font-size:9px;font-weight:700;color:#818cf8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;padding-bottom:4px;border-bottom:1px solid #2d3250;}
+
+#map-export-overlay .ov-item{display:flex;align-items:center;gap:6px;font-size:9px;color:#e2e8f0;margin:2px 0;}
+
+#map-export-overlay .ov-swatch{width:13px;height:13px;border-radius:2px;flex-shrink:0;border:1px solid rgba(255,255,255,.15);}
+
+#map-export-scale{position:absolute;bottom:8px;left:8px;z-index:9999;background:rgba(26,29,39,.85);border:1px solid #2d3250;border-radius:4px;padding:2px 7px;font-size:9px;color:#94a3b8;font-family:'JetBrains Mono',monospace;pointer-events:none;display:none;}

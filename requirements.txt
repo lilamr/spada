@@ -1,0 +1,11 @@
+# SpaDa — Runtime Dependencies
+# Install: pip install -r requirements.txt
+
+PyQt5>=5.15.0
+PyQtWebEngine>=5.15.0
+geopandas>=0.14.0
+fiona>=1.9.0
+shapely>=2.0.0
+pyproj>=3.5.0
+pandas>=2.0.0
+numpy>=1.24.0

@@ -1,0 +1,25 @@
+/* SpaDa — CHART styles */
+
+#chart-view{flex:1;display:flex;overflow:hidden;}
+
+#chart-ctrl{width:220px;background:var(--sf);border-right:1px solid var(--bd);padding:10px;overflow-y:auto;display:flex;flex-direction:column;gap:9px;flex-shrink:0;transition:width .22s,padding .22s;}
+
+#chart-ctrl.collapsed{width:0;padding:0;overflow:hidden;}
+
+.ct-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--tx3);display:flex;align-items:center;justify-content:space-between;}
+
+.ct-grp{display:flex;flex-direction:column;gap:3px;}
+
+.ct-lbl{font-size:9px;color:var(--tx2);font-weight:600;}
+
+.ct-sel{background:var(--sf2);border:1px solid var(--bd);color:var(--tx);padding:4px 7px;border-radius:4px;font-size:10px;font-family:inherit;width:100%;cursor:pointer;}
+
+.ct-sel:focus{outline:none;border-color:var(--ac);}
+
+.btn-f{width:100%;padding:6px;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;border:none;transition:background .16s;}
+
+.btn-rnd{background:var(--ac);color:#fff;}.btn-rnd:hover{background:var(--ac2);}
+
+.btn-dl2{background:var(--sf2);color:var(--tx2);border:1px solid var(--bd);margin-top:2px;}.btn-dl2:hover{border-color:var(--ac);color:var(--ac2);}
+
+#chart-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;background:var(--bg);overflow:hidden;gap:8px;position:relative;}
