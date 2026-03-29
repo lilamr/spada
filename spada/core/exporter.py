@@ -121,6 +121,9 @@ class HtmlExporter:
             })
         return json.dumps(layers_js, ensure_ascii=False, default=str)
 
+    def _compute_color_map(self, layer: LayerData, sc: dict) -> dict:
+        return _compute_color_map(layer, sc)
+
 
 # ── Private helpers ────────────────────────────────────────────────────────────
 
