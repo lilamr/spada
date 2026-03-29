@@ -8,21 +8,21 @@ function initVm(){
   if(LAYERS.length)updateVmFields();
 }
 
-function changeVmBasemap(k){
-  if(!vmap)return;
-  if(vmActiveTile)vmap.removeLayer(vmActiveTile);
-  vmActiveTile=L.tileLayer(TILES[k]._url,TILES[k].options);
-  vmActiveTile.addTo(vmap);vmActiveTile.bringToBack();
-}
-
 function ensureVmap(){
   if(vmap)return;
   vmap=L.map('vmap',{zoomControl:true,attributionControl:false});
-  vmActiveTile=L.tileLayer(TILES.cd._url,TILES.cd.options);
+  vmActiveTile=L.tileLayer(TILE_CONFIGS.cd.url, TILE_CONFIGS.cd.opts);
   vmActiveTile.addTo(vmap);
   L.control.scale({imperial:false,position:'bottomleft'}).addTo(vmap);
   const bounds=[];LAYERS.forEach(layer=>{try{const b=L.geoJSON(layer.geojson).getBounds();if(b.isValid())bounds.push(b);}catch(e){}});
   if(bounds.length){let b=bounds[0];bounds.slice(1).forEach(x=>b=b.extend(x));vmap.fitBounds(b,{padding:[20,20]});}
+}
+
+function changeVmBasemap(k){
+  if(!vmap)return;
+  if(vmActiveTile)vmap.removeLayer(vmActiveTile);
+  vmActiveTile=L.tileLayer(TILE_CONFIGS[k].url, TILE_CONFIGS[k].opts);
+  vmActiveTile.addTo(vmap);vmActiveTile.bringToBack();
 }
 
 function updateVmFields(){

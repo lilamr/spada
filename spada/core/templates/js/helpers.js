@@ -16,13 +16,21 @@ let vmTimesteps = [], vmTimeLayers = {};
 let chartLabels = [], chartValues = [], chartFy = '', chartSortDir = 0;
 let vmActiveTile = null;
 
-/* ── Tile layers (defined here, TILES used in map.js and vm.js) ── */
+/* ── Tile config — URL + options terpisah agar bisa di-reuse di vm.js ── */
+const TILE_CONFIGS = {
+  cd:   { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',   opts: { attribution: '© CartoDB', maxZoom: 19, crossOrigin: 'anonymous' } },
+  osm:  { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',               opts: { attribution: '© OSM',     maxZoom: 19, crossOrigin: 'anonymous' } },
+  cl:   { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',   opts: { attribution: '© CartoDB', maxZoom: 19, crossOrigin: 'anonymous' } },
+  esri: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', opts: { attribution: '© ESRI', maxZoom: 19, crossOrigin: 'anonymous' } },
+  topo: { url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',                 opts: { attribution: '© OpenTopo', maxZoom: 17, crossOrigin: 'anonymous' } },
+};
+
 const TILES = {
-  cd:   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',   { attribution: '© CartoDB', maxZoom: 19 }),
-  osm:  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',               { attribution: '© OSM',     maxZoom: 19 }),
-  cl:   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',   { attribution: '© CartoDB', maxZoom: 19 }),
-  esri: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© ESRI', maxZoom: 19 }),
-  topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',                 { attribution: '© OpenTopo', maxZoom: 17 }),
+  cd:   L.tileLayer(TILE_CONFIGS.cd.url,   TILE_CONFIGS.cd.opts),
+  osm:  L.tileLayer(TILE_CONFIGS.osm.url,  TILE_CONFIGS.osm.opts),
+  cl:   L.tileLayer(TILE_CONFIGS.cl.url,   TILE_CONFIGS.cl.opts),
+  esri: L.tileLayer(TILE_CONFIGS.esri.url, TILE_CONFIGS.esri.opts),
+  topo: L.tileLayer(TILE_CONFIGS.topo.url, TILE_CONFIGS.topo.opts),
 };
 let activeTile = TILES.cd;
 
