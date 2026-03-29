@@ -5,11 +5,11 @@ Unit test untuk HtmlExporter.
 """
 
 import json
+
 import pytest
 
 from spada.core.exporter import HtmlExporter
 from spada.core.layer import LayerData
-
 
 # ── Fixtures ──────────────────────────────────
 
@@ -106,7 +106,7 @@ class TestBuild:
         # Sembunyikan semua field dari tabel
         for fc in layer.field_configs:
             fc.in_table = False
-        html = exporter.build([layer])
+        exporter.build([layer])
         sc = layer.get_style_config()
         assert sc["table_fields"] == []
 

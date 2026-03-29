@@ -6,13 +6,20 @@ Widget Qt reusable: ColorButton dan FieldConfigTable.
 
 from __future__ import annotations
 
-from PyQt5.QtWidgets import (
-    QPushButton, QColorDialog, QTableWidget, QTableWidgetItem,
-    QHeaderView, QAbstractItemView, QCheckBox, QComboBox,
-    QWidget, QHBoxLayout,
-)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QCursor
+from PyQt5.QtWidgets import (
+    QAbstractItemView,
+    QCheckBox,
+    QColorDialog,
+    QComboBox,
+    QHBoxLayout,
+    QHeaderView,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QWidget,
+)
 
 from ..core.layer import FieldConfig
 from .styles import FIELD_TABLE
@@ -162,7 +169,10 @@ class FieldConfigTable(QTableWidget):
             cb_p  = self._get_cb(i, 2)
             cb_t  = self._get_cb(i, 3)
             combo = self._get_type_combo(i)
-            if cb_p:  fc.in_popup   = cb_p.isChecked()
-            if cb_t:  fc.in_table   = cb_t.isChecked()
-            if combo: fc.field_type = self._TYPE_VALUES[combo.currentIndex()]
+            if cb_p:
+                fc.in_popup = cb_p.isChecked()
+            if cb_t:
+                fc.in_table = cb_t.isChecked()
+            if combo:
+                fc.field_type = self._TYPE_VALUES[combo.currentIndex()]
         self.changed.emit()

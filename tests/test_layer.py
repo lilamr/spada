@@ -5,15 +5,11 @@ Unit test untuk FieldConfig dan LayerData.
 """
 
 import json
-import tempfile
 from pathlib import Path
 
 import pytest
-import geopandas as gpd
-from shapely.geometry import Point, Polygon
 
 from spada.core.layer import FieldConfig, LayerData
-
 
 # ── Fixtures ──────────────────────────────────
 

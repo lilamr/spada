@@ -16,12 +16,14 @@ from __future__ import annotations
 import os
 import tempfile
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
 from PyQt5.QtCore import Qt, QTimer, QUrl
+from PyQt5.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 try:
     from PyQt5.QtWebEngineWidgets import (
-        QWebEngineView, QWebEngineSettings, QWebEngineProfile,
+        QWebEngineProfile,
+        QWebEngineSettings,
+        QWebEngineView,
     )
     HAS_WEBENGINE = True
 except ImportError:

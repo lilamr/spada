@@ -13,7 +13,7 @@ import json
 import traceback
 from pathlib import Path
 
-from .layer import LayerData, FieldConfig
+from .layer import LayerData
 
 _VERSION = "1.0.0"
 
@@ -78,7 +78,7 @@ def load(path: str) -> tuple[list[LayerData], dict, list[str]]:
     """
     spd_dir = Path(path).parent.resolve()
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
 
     layers: list[LayerData] = []

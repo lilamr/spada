@@ -11,8 +11,8 @@ atau setelah install:
 import sys
 from pathlib import Path
 
-from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtWidgets import QApplication
 
 from spada.gui.main_window import SpadaWindow
 

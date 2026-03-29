@@ -11,22 +11,39 @@ import os
 import traceback
 from pathlib import Path
 
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QColor, QIcon, QPixmap
 from PyQt5.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QSplitter, QListWidget, QListWidgetItem, QScrollArea,
-    QFrame, QStatusBar, QToolBar, QAction, QFileDialog,
-    QMessageBox, QDialog, QDialogButtonBox, QLineEdit, QLabel,
-    QApplication, QAbstractItemView, QPushButton, QMenu,
+    QAbstractItemView,
+    QAction,
+    QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
     QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSplitter,
+    QStatusBar,
+    QToolBar,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QColor, QPixmap, QIcon
 
-from ..core.layer import LayerData
-from ..core.exporter import HtmlExporter
 from ..core import project as proj
-from .style_panel import StylePanel
+from ..core.exporter import HtmlExporter
+from ..core.layer import LayerData
 from .preview import MapPreviewWidget
+from .style_panel import StylePanel
 from .styles import APP_DARK
 
 
@@ -305,7 +322,8 @@ class SpadaWindow(QMainWindow):
             if self._logo_b64:
                 try:
                     raw = base64.b64decode(self._logo_b64.split(",", 1)[1])
-                    px = QPixmap(); px.loadFromData(raw)
+                    px = QPixmap()
+                    px.loadFromData(raw)
                     self._logo_preview.setPixmap(
                         px.scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     )
@@ -372,7 +390,8 @@ class SpadaWindow(QMainWindow):
         if self._logo_b64:
             try:
                 raw = base64.b64decode(self._logo_b64.split(",", 1)[1])
-                px = QPixmap(); px.loadFromData(raw)
+                px = QPixmap()
+                px.loadFromData(raw)
                 self._logo_preview.setPixmap(
                     px.scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 )
@@ -511,7 +530,7 @@ class SpadaWindow(QMainWindow):
         new_layers = []
         for i in range(self._layer_list.count()):
             name = self._layer_list.item(i).text().lstrip("◉ ")
-            match = next((l for l in self.layers if l.name == name), None)
+            match = next((layer for layer in self.layers if layer.name == name), None)
             if match:
                 new_layers.append(match)
         if len(new_layers) == len(self.layers):

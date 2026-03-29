@@ -29,7 +29,6 @@ from pathlib import Path
 
 from .layer import LayerData
 
-
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 _TMPL = Path(__file__).parent / "templates"

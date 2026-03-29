@@ -6,18 +6,30 @@ Panel konfigurasi style, label, dan kolom atribut untuk layer aktif.
 
 from __future__ import annotations
 
+from PyQt5.QtCore import QSignalBlocker, Qt, pyqtSignal
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
-    QGroupBox, QComboBox, QSlider, QSpinBox, QDoubleSpinBox,
-    QCheckBox, QPushButton, QLabel, QDialog, QDialogButtonBox,
-    QScrollArea, QFrame,
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QSlider,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, pyqtSignal, QSignalBlocker
 
-from ..core.layer import LayerData
 from ..core.exporter import HtmlExporter
+from ..core.layer import LayerData
+from .styles import APP_DARK, GROUP_BOX
 from .widgets import ColorButton, FieldConfigTable
-from .styles import GROUP_BOX, APP_DARK
 
 
 class StylePanel(QWidget):
