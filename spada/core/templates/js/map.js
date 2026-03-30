@@ -261,36 +261,107 @@ function _buildExportOverlay() {
   if (scaleLine && scaleEl) scaleEl.textContent = scaleLine.textContent;
 }
 
-/* ── PNG Export (pure Canvas API — tidak butuh html2canvas untuk peta) ── */
-function _renderMapToCanvas(mapEl, cb) {
+/* ── PNG Export Peta ── */
+function _renderMapToCanvas(mapEl, param2, param3, param4) {
+  let leafletMap, mode, cb;
+
+  // Backward compatibility untuk panggilan lama: _renderMapToCanvas(mapEl, callback)
+  if (typeof param2 === 'function') {
+    leafletMap = map;        // peta utama
+    mode = 'main';
+    cb = param2;
+  } 
+  // Panggilan baru: _renderMapToCanvas(mapEl, leafletMap, mode, callback)
+  else {
+    leafletMap = param2;
+    mode = param3 || 'main';
+    cb = param4;
+  }
+
   const W = mapEl.offsetWidth, H = mapEl.offsetHeight;
-  const out = document.createElement('canvas'); out.width = W * 2; out.height = H * 2;
-  const ctx = out.getContext('2d'); ctx.scale(2, 2);
-  ctx.fillStyle = '#0f1117'; ctx.fillRect(0, 0, W, H);
+  const out = document.createElement('canvas');
+  out.width = W; out.height = H;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#0f1117'; 
+  ctx.fillRect(0, 0, W, H);
 
   const mapRect = mapEl.getBoundingClientRect();
 
-  /* Tile images — aman karena crossOrigin: 'anonymous' sudah di-set di TILES */
+  /* 1. Tiles */
   Array.from(mapEl.querySelectorAll('.leaflet-tile'))
     .filter(img => img.complete && img.naturalWidth > 0)
     .forEach(img => {
       const r = img.getBoundingClientRect();
-      try { ctx.drawImage(img, r.left - mapRect.left, r.top - mapRect.top, r.width, r.height); } catch(e) {}
+      try { 
+        ctx.drawImage(img, r.left - mapRect.left, r.top - mapRect.top, r.width, r.height); 
+      } catch(e) {}
     });
 
-  /* SVG vector layers */
-  const svgEls = Array.from(mapEl.querySelectorAll('svg'));
-  Promise.all(svgEls.map(svg => new Promise(res => {
-    const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }));
-    const img = new Image();
-    const rect = svg.getBoundingClientRect();
-    img.onload = () => {
-      try { ctx.drawImage(img, rect.left - mapRect.left, rect.top - mapRect.top, rect.width, rect.height); } catch(e) {}
-      URL.revokeObjectURL(url); res();
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); res(); };
-    img.src = url;
-  }))).then(() => cb(out, ctx, W, H));
+  /* 2. Vector Layers */
+  if (mode === 'main') {
+    // === ORIGINAL CODE (peta utama) ===
+    LAYERS.forEach(layer => {
+      if (!layer.visible) return;
+      const s = layer.style;
+      layer.geojson.features.forEach(f => {
+        if (!f.geometry) return;
+        const color = featureColor(f, s);
+        ctx.fillStyle = color + Math.round(s.opacity * 255).toString(16).padStart(2,'0');
+        ctx.strokeStyle = s.stroke_color;
+        ctx.lineWidth = s.stroke_width;
+
+        const geom = f.geometry;
+        const type = geom.type;
+
+        function project(coord) {
+          const pt = leafletMap.latLngToContainerPoint([coord[1], coord[0]]);
+          return [pt.x, pt.y];
+        }
+
+        function drawRing(coords) {
+          const pts = coords.map(project);
+          if (!pts.length) return;
+          ctx.moveTo(pts[0][0], pts[0][1]);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+          ctx.closePath();
+        }
+
+        ctx.beginPath();
+        if (type === 'Point') {
+          const [x, y] = project(geom.coordinates);
+          ctx.arc(x, y, s.point_radius, 0, Math.PI * 2);
+          ctx.fill(); ctx.stroke();
+        } else if (type === 'MultiPoint') {
+          geom.coordinates.forEach(c => {
+            const [x, y] = project(c);
+            ctx.arc(x, y, s.point_radius, 0, Math.PI * 2);
+          });
+          ctx.fill(); ctx.stroke();
+        } else if (type === 'LineString') {
+          const pts = geom.coordinates.map(project);
+          pts.forEach(([x,y], i) => i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+          ctx.stroke();
+        } else if (type === 'MultiLineString') {
+          geom.coordinates.forEach(line => {
+            const pts = line.map(project);
+            pts.forEach(([x,y], i) => i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y));
+          });
+          ctx.stroke();
+        } else if (type === 'Polygon') {
+          geom.coordinates.forEach(drawRing);
+          ctx.fill('evenodd'); ctx.stroke();
+        } else if (type === 'MultiPolygon') {
+          geom.coordinates.forEach(poly => poly.forEach(drawRing));
+          ctx.fill('evenodd'); ctx.stroke();
+        }
+      });
+    });
+  } 
+  else if (mode === 'vm') {
+    renderVmLayerToCanvas(ctx, leafletMap, vmLayer);
+  }
+
+  cb(out, ctx, W, H);
 }
 
 function _drawLegendOnCanvas(ctx, ovEl, scEl, mapEl, W, H) {

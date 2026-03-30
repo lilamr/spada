@@ -176,16 +176,19 @@ function _buildVmExportOverlay(){
 function dlVmPng() {
   if (!vmap) return;
   _buildVmExportOverlay();
+
   const vmEl = document.getElementById('vmap');
   const ov   = document.getElementById('vm-export-overlay');
   const sc   = document.getElementById('vm-export-scale');
+
   if (ov) ov.style.display = 'block';
   if (sc) sc.style.display = 'block';
-  /* Reuse _renderMapToCanvas dari map.js */
-  _renderMapToCanvas(vmEl, (out, ctx, W, H) => {
+
+  _renderMapToCanvas(vmEl, vmap, 'vm', (out, ctx, W, H) => {
     _drawLegendOnCanvas(ctx, ov, sc, vmEl, W, H);
     if (ov) ov.style.display = 'none';
     if (sc) sc.style.display = 'none';
+
     const a = document.createElement('a');
     a.download = 'spada-visualmap.png';
     a.href = out.toDataURL('image/png');
@@ -193,4 +196,115 @@ function dlVmPng() {
   });
 }
 
-window.addEventListener('DOMContentLoaded',init);
+/* ==================== RENDER VM LAYER KE CANVAS (UPDATED) ==================== */
+function renderVmLayerToCanvas(ctx, leafletVmap, vmLayer) {
+  if (!vmLayer || !leafletVmap) return;
+  const mapRect = leafletVmap.getContainer().getBoundingClientRect();
+
+  // 1. Heatmap
+  if (vmLayer instanceof L.HeatLayer) {
+    const heatCanvas = vmLayer._canvas;
+    if (heatCanvas) {
+      const r = heatCanvas.getBoundingClientRect();
+      try {
+        ctx.drawImage(heatCanvas, r.left - mapRect.left, r.top - mapRect.top, r.width, r.height);
+      } catch(e) {}
+    }
+    return;
+  }
+
+  // 2. Ambil semua layers (handle GeoJSON, LayerGroup, MarkerClusterGroup)
+  let layers = [];
+
+  if (vmLayer instanceof L.GeoJSON || vmLayer instanceof L.LayerGroup) {
+    layers = vmLayer.getLayers();
+  } else if (vmLayer.getLayers) {
+    layers = vmLayer.getLayers();
+  } else {
+    layers = [vmLayer];
+  }
+
+  layers.forEach(layer => {
+    const opt = layer.options || {};
+
+    // === CIRCLE MARKER (Proportional, Cartogram, Dot Density, Cluster) ===
+    if (layer instanceof L.CircleMarker) {
+      const ll = layer.getLatLng();
+      const pt = leafletVmap.latLngToContainerPoint(ll);
+      ctx.save();
+      ctx.globalAlpha = opt.fillOpacity ?? 0.85;
+      ctx.fillStyle = opt.fillColor || '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, opt.radius || 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (opt.weight > 0) {
+        ctx.strokeStyle = opt.color || '#ffffff';
+        ctx.lineWidth = opt.weight;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // === RECTANGLE (Hexbin) ===
+    else if (layer instanceof L.Rectangle) {
+      const bounds = layer.getBounds();
+      const sw = leafletVmap.latLngToContainerPoint(bounds.getSouthWest());
+      const ne = leafletVmap.latLngToContainerPoint(bounds.getNorthEast());
+      ctx.save();
+      ctx.globalAlpha = opt.fillOpacity ?? 0.75;
+      ctx.fillStyle = opt.fillColor || '#3b82f6';
+      ctx.fillRect(sw.x, sw.y, ne.x - sw.x, ne.y - sw.y);
+      if (opt.weight > 0) {
+        ctx.strokeStyle = opt.color || '#fff';
+        ctx.lineWidth = opt.weight;
+        ctx.strokeRect(sw.x, sw.y, ne.x - sw.x, ne.y - sw.y);
+      }
+      ctx.restore();
+    }
+
+    // === POLYLINE (Flow) ===
+    else if (layer instanceof L.Polyline) {
+      let latlngs = layer.getLatLngs();
+      const pts = latlngs.flat(Infinity).map(ll => leafletVmap.latLngToContainerPoint(ll));
+      ctx.save();
+      ctx.strokeStyle = opt.color || '#ef4444';
+      ctx.lineWidth = opt.weight || 5;
+      ctx.globalAlpha = opt.opacity ?? 0.75;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // === POLYGON (Choropleth & Timeseries) ===
+    else if (layer instanceof L.Polygon) {
+      let rings = layer.getLatLngs();
+      if (!Array.isArray(rings[0])) rings = [rings];   // handle single ring
+
+      ctx.save();
+      ctx.globalAlpha = opt.fillOpacity ?? 0.75;
+      ctx.fillStyle = opt.fillColor || '#3b82f6';
+      ctx.strokeStyle = opt.color || '#ffffff';
+      ctx.lineWidth = opt.weight || 1.5;
+
+      ctx.beginPath();
+      rings.forEach(ring => {
+        const pts = Array.isArray(ring) ? ring : [ring];
+        const projected = pts.map(ll => leafletVmap.latLngToContainerPoint(ll));
+        if (projected.length < 3) return;
+        ctx.moveTo(projected[0].x, projected[0].y);
+        for (let i = 1; i < projected.length; i++) {
+          ctx.lineTo(projected[i].x, projected[i].y);
+        }
+        ctx.closePath();
+      });
+
+      ctx.fill('evenodd');
+      ctx.stroke();
+      ctx.restore();
+    }
+  });
+}
