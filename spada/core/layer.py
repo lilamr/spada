@@ -7,6 +7,7 @@ Data model untuk layer spasial: FieldConfig dan LayerData.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import geopandas as gpd
@@ -49,6 +50,12 @@ class LayerData:
         "#8bc34a", "#ff5722", "#607d8b", "#795548", "#673ab7",
     ]
     _color_idx: int = 0
+    _WEB_SIMPLIFY_FEATURE_THRESHOLD: int = int(
+        os.getenv("SPADA_WEB_SIMPLIFY_FEATURE_THRESHOLD", "3000")
+    )
+    _WEB_SIMPLIFY_FACTOR: float = float(
+        os.getenv("SPADA_WEB_SIMPLIFY_FACTOR", "0.0007")
+    )
 
     def __init__(self, path: str) -> None:
         self.path: str = path
@@ -83,6 +90,7 @@ class LayerData:
 
         # Field configs (diinisiasi setelah load)
         self.field_configs: list[FieldConfig] = []
+        self._geojson_cache: dict | None = None
 
         self._load()
 
@@ -91,6 +99,7 @@ class LayerData:
     def _load(self) -> None:
         """Baca file spasial, reprojecsi ke WGS-84, init field_configs."""
         ext = Path(self.path).suffix.lower()
+        self._geojson_cache = None
 
         if ext == ".kml":
             import fiona
@@ -107,7 +116,7 @@ class LayerData:
                 pd.concat(gdfs, ignore_index=True) if gdfs else gpd.GeoDataFrame()
             )
         else:
-            self.gdf = gpd.read_file(self.path)
+            self.gdf = self._read_spatial_file(self.path)
 
         if self.gdf.crs and self.gdf.crs.to_epsg() != 4326:
             self.gdf = self.gdf.to_crs(epsg=4326)
@@ -152,7 +161,45 @@ class LayerData:
         ]
 
     def to_geojson_dict(self) -> dict:
-        return json.loads(self.gdf.to_json())
+        if self._geojson_cache is not None:
+            return self._geojson_cache
+        web_gdf = self._optimized_web_gdf()
+        self._geojson_cache = json.loads(web_gdf.to_json(drop_id=True))
+        return self._geojson_cache
+
+    def _read_spatial_file(self, path: str) -> gpd.GeoDataFrame:
+        """
+        Reader dengan fallback:
+        - utamakan pyogrio + Arrow (lebih cepat untuk SHP/GPKG besar)
+        - fallback ke backend default geopandas bila tidak tersedia
+        """
+        try:
+            return gpd.read_file(path, engine="pyogrio", use_arrow=True)
+        except Exception:
+            return gpd.read_file(path)
+
+    def _optimized_web_gdf(self) -> gpd.GeoDataFrame:
+        """
+        Untuk dataset besar, sederhanakan geometri sebelum serialisasi GeoJSON
+        agar render dashboard/preview tetap responsif.
+        """
+        if self.gdf.empty or self.feature_count < self._WEB_SIMPLIFY_FEATURE_THRESHOLD:
+            return self.gdf
+        if self.geom_type not in {"Polygon", "MultiPolygon"}:
+            return self.gdf
+        minx, miny, maxx, maxy = self.gdf.total_bounds
+        max_span = max(abs(maxx - minx), abs(maxy - miny))
+        tolerance = max_span * self._WEB_SIMPLIFY_FACTOR
+        if tolerance <= 0:
+            return self.gdf
+        gdf_web = self.gdf.copy()
+        gdf_web.geometry = gdf_web.geometry.simplify(
+            tolerance=tolerance,
+            preserve_topology=True,
+        )
+        gdf_web = gdf_web[gdf_web.geometry.notnull()]
+        gdf_web = gdf_web[~gdf_web.geometry.is_empty]
+        return gdf_web.reset_index(drop=True)
 
     def get_style_config(self) -> dict:
         return {
