@@ -7,6 +7,6 @@ Format input : SHP, GeoJSON, KML, GPKG, GML
 Output       : HTML standalone (Leaflet + Chart.js)
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__  = "SpaDa Contributors"
 __license__ = "MIT"

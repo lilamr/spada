@@ -13,8 +13,45 @@ let sortCol = null, sortAsc = true, chartInst = null;
 let pvData = null, pvRowKeys = [], pvColKeys = [], pvFields = {};
 let pvSortCol = null, pvSortAsc = true;
 let vmTimesteps = [], vmTimeLayers = {};
-let chartLabels = [], chartValues = [], chartFy = '', chartSortDir = 0;
+let chartLabels = [], chartDatasets = [], chartFy = '', chartSortDir = 0;
 let vmActiveTile = null;
+let pvRowRecords = [];
+
+/* ── Global filter state (per layer) ──
+   globalFilters[layerId] = { col, op, val } | null
+   Diisi dari tab Atribut, dikonsumsi oleh Pivot, Chart, VM.
+──────────────────────────────────────── */
+const globalFilters = {};
+
+/** Kembalikan features layer yang sudah difilter sesuai globalFilters. */
+function getFilteredFeatures(layer) {
+  const f = globalFilters[layer.id];
+  if (!f || !f.col) return layer.geojson.features;
+  return layer.geojson.features.filter(feat =>
+    matchVal(feat.properties?.[f.col], f.op, f.val)
+  );
+}
+
+/** Simpan filter global untuk layer tertentu dan update indikator. */
+function setGlobalFilter(layerId, col, op, val) {
+  globalFilters[layerId] = col ? { col, op, val } : null;
+  _updateFilterIndicator();
+}
+
+/** Hapus filter global untuk layer tertentu. */
+function clearGlobalFilter(layerId) {
+  delete globalFilters[layerId];
+  _updateFilterIndicator();
+}
+
+/** Tampilkan badge 🔴 di tab Atribut jika ada filter aktif. */
+function _updateFilterIndicator() {
+  const anyActive = Object.values(globalFilters).some(f => f && f.col);
+  const attrTab = document.querySelector('.tab[onclick*="\'attr\'"]');
+  if (attrTab) attrTab.innerHTML = anyActive
+    ? '📊 Atribut <span style="color:#ef4444;font-size:8px">●</span>'
+    : '📊 Atribut';
+}
 
 /* ── Tile config — URL + options terpisah agar bisa di-reuse di vm.js ── */
 const TILE_CONFIGS = {

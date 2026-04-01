@@ -90,54 +90,133 @@
   </div>
   <div id="pivot-view" style="display:none">
     <div id="pv-ctrl">
-      <div class="ct-title">📋 Pivot <button class="ctrl-toggle" onclick="toggleCtrl('pv-ctrl','pv-restore')">◀</button></div>
+      <div class="ct-title">📋 Pivot Table <button class="ctrl-toggle" onclick="toggleCtrl('pv-ctrl','pv-restore')">◀</button></div>
+      
       <div class="ct-grp"><label class="pv-lbl">Layer</label>
         <select class="pv-sel" id="pv-lyr" onchange="updatePivotFields()"></select></div>
-      <div class="ct-grp"><label class="pv-lbl">Baris</label><select class="pv-sel" id="pv-row"></select></div>
-      <div class="ct-grp"><label class="pv-lbl">Kolom</label>
-        <select class="pv-sel" id="pv-col"><option value="">(Tidak ada)</option></select></div>
-      <div class="ct-grp"><label class="pv-lbl">Nilai</label><select class="pv-sel" id="pv-val"></select></div>
+      
+      <!-- Baris (Multi Select) -->
+      <div class="ct-grp">
+        <label class="pv-lbl">Baris (bisa multi) 
+          <span style="color:var(--tx3);font-size:8px">(Ctrl+klik)</span>
+        </label>
+        <select class="pv-sel" id="pv-row" multiple size="5" style="height:90px"></select>
+      </div>
+      
+      <!-- Kolom (Multi Select) -->
+      <div class="ct-grp">
+        <label class="pv-lbl">Kolom (bisa multi) 
+          <span style="color:var(--tx3);font-size:8px">(Ctrl+klik)</span>
+        </label>
+        <select class="pv-sel" id="pv-col" multiple size="5" style="height:90px">
+          <option value="">(Tidak ada kolom pivot)</option>
+        </select>
+      </div>
+      
+      <!-- Nilai (Single Select) -->
+      <div class="ct-grp">
+        <label class="pv-lbl">Nilai (hanya 1 field)</label>
+        <select class="pv-sel" id="pv-val"></select>
+      </div>
+      
       <div class="ct-grp"><label class="pv-lbl">Agregasi</label>
         <select class="pv-sel" id="pv-agg">
-          <option value="count">Count</option><option value="sum">Sum</option>
-          <option value="mean">Mean</option><option value="min">Min</option><option value="max">Max</option>
-        </select></div>
+          <option value="count">Count</option>
+          <option value="sum">Sum</option>
+          <option value="mean">Mean</option>
+          <option value="min">Min</option>
+          <option value="max">Max</option>
+        </select>
+      </div>
+      
       <div class="ct-grp"><label class="pv-lbl">Heatmap</label>
         <select class="pv-sel" id="pv-hm">
-          <option value="none">Tidak</option><option value="row">Per Baris</option>
-          <option value="col">Per Kolom</option><option value="all">Global</option>
-        </select></div>
-      <button class="btn-f btn-rnd" onclick="renderPivot()">Buat</button>
+          <option value="none">Tidak</option>
+          <option value="row">Per Baris</option>
+          <option value="all">Global</option>
+        </select>
+      </div>
+
+      <button class="btn-f btn-rnd" onclick="renderPivot()">Buat Pivot</button>
       <button class="btn-f btn-dl2" onclick="dlPivotCsv()">⬇ CSV</button>
+      <span id="pv-filter-info" style="font-size:8px;text-align:center;display:block;margin-top:4px;"></span>
     </div>
+
     <button class="ctrl-restore" id="pv-restore" onclick="toggleCtrl('pv-ctrl','pv-restore')">▶</button>
+    
     <div id="pivot-area">
-      <div id="pivot-wrap"><table id="pt"><thead id="pt-head"></thead><tbody id="pt-body"></tbody></table></div>
+      <div id="pivot-wrap">
+        <table id="pt">
+          <thead id="pt-head"></thead>
+          <tbody id="pt-body"></tbody>
+        </table>
+      </div>
     </div>
   </div>
   <div id="chart-view" style="display:none">
     <div id="chart-ctrl">
-      <div class="ct-title">⚙ Konfigurasi <button class="ctrl-toggle" onclick="toggleCtrl('chart-ctrl','ch-restore')">◀</button></div>
+      <div class="ct-title">📈 Chart <button class="ctrl-toggle" onclick="toggleCtrl('chart-ctrl','ch-restore')">◀</button></div>
+      
       <div class="ct-grp"><label class="ct-lbl">Layer</label>
         <select class="ct-sel" id="ch-lyr" onchange="updateChartFields()"></select></div>
-      <div class="ct-grp"><label class="ct-lbl">Tipe</label>
+      
+      <div class="ct-grp"><label class="ct-lbl">Tipe Chart</label>
         <select class="ct-sel" id="ch-type">
-          <option value="bar">📊 Bar</option><option value="horizontalBar">↔ Horizontal Bar</option>
-          <option value="pie">🥧 Pie</option><option value="doughnut">🍩 Doughnut</option>
-          <option value="line">📈 Line</option><option value="scatter">⚡ Scatter</option>
-        </select></div>
-      <div class="ct-grp"><label class="ct-lbl">Field X</label><select class="ct-sel" id="ch-x"></select></div>
-      <div class="ct-grp"><label class="ct-lbl">Field Y</label><select class="ct-sel" id="ch-y"></select></div>
+          <option value="bar">📊 Bar</option>
+          <option value="horizontalBar">↔ Horizontal Bar</option>
+          <option value="line">📈 Line</option>
+          <option value="pie">🥧 Pie</option>
+          <option value="doughnut">🍩 Doughnut</option>
+          <option value="scatter">⚡ Scatter</option>
+        </select>
+      </div>
+
+      <!-- Mode Chart -->
+      <div class="ct-grp">
+        <label class="ct-lbl">Mode</label>
+        <select class="ct-sel" id="ch-mode" onchange="updateChartMode()">
+          <option value="multi-y">Multi Field Y (Metrik)</option>
+          <option value="grouped">X + Y + Series (Group By)</option>
+        </select>
+      </div>
+
+      <!-- Field X -->
+      <div class="ct-grp"><label class="ct-lbl">Field X (Kategori)</label>
+        <select class="ct-sel" id="ch-x"></select></div>
+
+      <!-- Multi Y (Mode lama) -->
+      <div id="ch-multi-y-grp" class="ct-grp">
+        <label class="ct-lbl">Field Y <span style="color:var(--tx3);font-size:8px">(Ctrl+klik untuk multi)</span></label>
+        <select class="ct-sel" id="ch-y" multiple size="4" style="height:85px"></select>
+      </div>
+
+      <!-- Grouped Mode (Mode baru) -->
+      <div id="ch-grouped-grp" class="ct-grp" style="display:none">
+        <label class="ct-lbl">Field Y (Nilai)</label>
+        <select class="ct-sel" id="ch-y-single"></select>
+      </div>
+      <div id="ch-series-grp" class="ct-grp" style="display:none">
+        <label class="ct-lbl">Series / Group By</label>
+        <select class="ct-sel" id="ch-series"></select>
+      </div>
+
       <div class="ct-grp"><label class="ct-lbl">Agregasi</label>
         <select class="ct-sel" id="ch-agg">
-          <option value="count">Count</option><option value="sum">Sum</option>
-          <option value="mean">Mean</option><option value="min">Min</option><option value="max">Max</option>
-        </select></div>
+          <option value="count">Count</option>
+          <option value="sum">Sum</option>
+          <option value="mean">Mean</option>
+          <option value="min">Min</option>
+          <option value="max">Max</option>
+        </select>
+      </div>
+
       <button class="btn-f btn-rnd" onclick="renderChart()">🎨 Buat Grafik</button>
       <button class="btn-f btn-dl2" onclick="sortChart()">⇅ Sort Nilai</button>
       <button class="btn-f btn-dl2" onclick="dlChartPng()">⬇ PNG</button>
       <button class="btn-f btn-dl2" onclick="dlChartSvg()">⬇ SVG</button>
+      <span id="ch-filter-info" style="font-size:8px;text-align:center;display:block;margin-top:4px;"></span>
     </div>
+
     <button class="ctrl-restore" id="ch-restore" onclick="toggleCtrl('chart-ctrl','ch-restore')">▶</button>
     <div id="chart-area"><canvas id="chart-canvas"></canvas></div>
   </div>

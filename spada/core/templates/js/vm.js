@@ -49,7 +49,7 @@ function renderVisualMap(){
   const id=document.getElementById('vm-lyr').value;const layer=LAYERS.find(l=>l.id===id);if(!layer)return;
   const type=document.getElementById('vm-type').value;const valF=document.getElementById('vm-val').value;
   const pal=PALETTES[document.getElementById('vm-pal').value]||PALETTES.Blues;
-  const features=layer.geojson.features;
+  const features=getFilteredFeatures(layer);
   if(type==='heatmap')buildHeatmap(features,valF);
   else if(type==='cluster')buildCluster(features,layer);
   else if(type==='proportional')buildProportional(features,valF,pal);

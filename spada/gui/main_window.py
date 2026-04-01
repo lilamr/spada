@@ -50,7 +50,7 @@ from .styles import APP_DARK
 class SpadaWindow(QMainWindow):
     """Jendela utama SpaDa — Spasial Dashboard v1.0.0"""
 
-    APP_TITLE       = "SpaDa — Spasial Dashboard v1.0.0"
+    APP_TITLE       = "SpaDa — Spasial Dashboard v1.1.0"
     MIN_SIZE        = (1100, 680)
     DEF_SIZE        = (1380, 840)
     SIDEBAR_WIDTH   = 310
@@ -159,7 +159,7 @@ class SpadaWindow(QMainWindow):
         self._status = QStatusBar()
         self.setStatusBar(self._status)
         self._status.showMessage(
-            "SpaDa v1.0.0 — Tambahkan layer spasial untuk membuat dashboard"
+            "SpaDa v1.1.0 — Tambahkan layer spasial untuk membuat dashboard"
         )
 
     def _build_left_panel(self) -> QWidget:
@@ -670,7 +670,7 @@ class SpadaWindow(QMainWindow):
     def _show_about(self) -> None:
         QMessageBox.about(
             self, "Tentang SpaDa",
-            "<b>SpaDa — Spasial Dashboard v1.0.0</b><br><br>"
+            "<b>SpaDa — Spasial Dashboard v1.1.0</b><br><br>"
             "Aplikasi desktop untuk membuat dashboard visualisasi data spasial interaktif.<br><br>"
             "Format input: SHP, GeoJSON, KML, GPKG, GML<br>"
             "Output: HTML standalone (Leaflet + Chart.js)<br><br>"

@@ -8,7 +8,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![PyQt5](https://img.shields.io/badge/GUI-PyQt5-41cd52)](https://riverbankcomputing.com/software/pyqt/)
-[![Version](https://img.shields.io/badge/Version-1.0.0-6366f1)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-1.1.0-6366f1)](CHANGELOG.md)
 
 **Aplikasi desktop untuk membuat dashboard visualisasi data spasial interaktif.**
 

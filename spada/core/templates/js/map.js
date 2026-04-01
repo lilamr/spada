@@ -1,6 +1,10 @@
 /* ═══════════════════════════════════════════════════════════
    SpaDa — MAP
    Peta tematik: init, basemap, sidebar, layer render, PNG export.
+   Perbaikan terbaru:
+   - Hanya layer pertama aktif default
+   - Urutan overlay di peta mengikuti urutan di sidebar (paling atas sidebar = paling atas peta)
+   - Tidak terpengaruh urutan klik mata
 ═══════════════════════════════════════════════════════════ */
 
 function toggleCtrl(ctrlId, restoreId) {
@@ -16,10 +20,20 @@ function init() {
   activeTile = TILES.cd;
   activeTile.addTo(map);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
+
   map.on('mousemove', e =>
     document.getElementById('sb-coords').textContent =
       `Lat: ${e.latlng.lat.toFixed(5)}  Lon: ${e.latlng.lng.toFixed(5)}`
   );
+
+  // Hanya layer pertama yang aktif default
+  if (LAYERS && LAYERS.length > 0) {
+    LAYERS[0].visible = true;
+    for (let i = 1; i < LAYERS.length; i++) {
+      LAYERS[i].visible = false;
+    }
+  }
+
   buildSidebar();
   renderAllLayers();
   buildLegends();
@@ -27,9 +41,12 @@ function init() {
   initPivot();
   initChart();
   initVm();
+
   document.addEventListener('keydown', e => {
     if (e.ctrlKey && e.key === 'b') { e.preventDefault(); toggleSidebar(); }
   });
+
+  reorderAllLayers();   // pastikan urutan overlay benar dari awal
 }
 
 function changeBasemap(k) {
@@ -50,7 +67,8 @@ function toggleSidebar() {
 function buildSidebar() {
   const el = document.getElementById('layer-list');
   el.innerHTML = '';
-  LAYERS.slice().reverse().forEach(layer => {
+  // Tidak pakai reverse lagi → urutan sidebar sama seperti array LAYERS
+  LAYERS.forEach(layer => {
     const n = layer.geojson.features ? layer.geojson.features.length : 0;
     const div = document.createElement('div');
     div.className = 'layer-item';
@@ -113,11 +131,38 @@ function toggleLyr(e, id) {
   e.stopPropagation();
   const l = LAYERS.find(x => x.id === id);
   if (!l) return;
+
   l.visible = !l.visible;
-  l.visible ? lfLayers[id].addTo(map) : map.removeLayer(lfLayers[id]);
+  const lf = lfLayers[id];
+  if (!lf) return;
+
+  if (l.visible) {
+    lf.addTo(map);
+  } else {
+    map.removeLayer(lf);
+  }
+
+  // Update ikon mata
   const vis = document.querySelector(`[data-id="${id}"] .layer-vis`);
-  if (vis) { vis.textContent = l.visible ? '👁' : '🚫'; vis.className = 'layer-vis' + (l.visible ? ' on' : ''); }
+  if (vis) {
+    vis.textContent = l.visible ? '👁' : '🚫';
+    vis.className = 'layer-vis' + (l.visible ? ' on' : '');
+  }
+
+  reorderAllLayers();   // ← Pastikan urutan overlay selalu mengikuti sidebar
   updateSb();
+}
+
+// ── Fungsi utama: urutan overlay mengikuti urutan sidebar ──
+function reorderAllLayers() {
+  // Loop dari paling bawah ke paling atas di array LAYERS
+  // Layer paling atas di sidebar akan di-bringToFront terakhir → paling atas di peta
+  LAYERS.forEach(layer => {
+    const lf = lfLayers[layer.id];
+    if (lf && layer.visible && map.hasLayer(lf)) {
+      lf.bringToFront();
+    }
+  });
 }
 
 function featureColor(f, s) {
@@ -140,8 +185,13 @@ function renderAllLayers() {
     if (layer.visible) lf.addTo(map);
     try { const b = lf.getBounds(); if (b.isValid()) bounds.push(b); } catch(e) {}
   });
-  if (bounds.length) { let b = bounds[0]; bounds.slice(1).forEach(x => b = b.extend(x)); map.fitBounds(b, { padding: [22, 22] }); }
+  if (bounds.length) { 
+    let b = bounds[0]; 
+    bounds.slice(1).forEach(x => b = b.extend(x)); 
+    map.fitBounds(b, { padding: [22, 22] }); 
+  }
   updateSb();
+  reorderAllLayers();   // pastikan urutan benar setelah semua layer dirender
 }
 
 function buildLfLayer(layer) {
@@ -211,7 +261,7 @@ function switchTab(tab) {
   document.getElementById('pivot-view').style.display = tab === 'pivot' ? 'flex' : 'none';
   document.getElementById('chart-view').style.display = tab === 'chart' ? 'flex' : 'none';
   document.getElementById('vm-view').style.display    = tab === 'vm'    ? 'flex' : 'none';
-  /* Sidebar hanya tampil di tab Peta */
+
   const sb = document.getElementById('sidebar');
   const sbFloat = document.getElementById('btn-sb-float');
   if (tab === 'map') {
@@ -225,7 +275,7 @@ function switchTab(tab) {
   if (tab === 'vm' && vmap) setTimeout(() => vmap.invalidateSize(), 50);
 }
 
-/* ── Export overlay (legend + scale untuk PNG) ── */
+/* ── Export overlay & PNG (tidak diubah) ── */
 function _buildExportOverlay() {
   const ovItems = document.getElementById('ov-items');
   if (!ovItems) return;
@@ -261,21 +311,12 @@ function _buildExportOverlay() {
   if (scaleLine && scaleEl) scaleEl.textContent = scaleLine.textContent;
 }
 
-/* ── PNG Export Peta ── */
 function _renderMapToCanvas(mapEl, param2, param3, param4) {
   let leafletMap, mode, cb;
-
-  // Backward compatibility untuk panggilan lama: _renderMapToCanvas(mapEl, callback)
   if (typeof param2 === 'function') {
-    leafletMap = map;        // peta utama
-    mode = 'main';
-    cb = param2;
-  } 
-  // Panggilan baru: _renderMapToCanvas(mapEl, leafletMap, mode, callback)
-  else {
-    leafletMap = param2;
-    mode = param3 || 'main';
-    cb = param4;
+    leafletMap = map; mode = 'main'; cb = param2;
+  } else {
+    leafletMap = param2; mode = param3 || 'main'; cb = param4;
   }
 
   const W = mapEl.offsetWidth, H = mapEl.offsetHeight;
@@ -287,19 +328,14 @@ function _renderMapToCanvas(mapEl, param2, param3, param4) {
 
   const mapRect = mapEl.getBoundingClientRect();
 
-  /* 1. Tiles */
   Array.from(mapEl.querySelectorAll('.leaflet-tile'))
     .filter(img => img.complete && img.naturalWidth > 0)
     .forEach(img => {
       const r = img.getBoundingClientRect();
-      try { 
-        ctx.drawImage(img, r.left - mapRect.left, r.top - mapRect.top, r.width, r.height); 
-      } catch(e) {}
+      try { ctx.drawImage(img, r.left - mapRect.left, r.top - mapRect.top, r.width, r.height); } catch(e) {}
     });
 
-  /* 2. Vector Layers */
   if (mode === 'main') {
-    // === ORIGINAL CODE (peta utama) ===
     LAYERS.forEach(layer => {
       if (!layer.visible) return;
       const s = layer.style;
@@ -356,8 +392,7 @@ function _renderMapToCanvas(mapEl, param2, param3, param4) {
         }
       });
     });
-  } 
-  else if (mode === 'vm') {
+  } else if (mode === 'vm') {
     renderVmLayerToCanvas(ctx, leafletMap, vmLayer);
   }
 
@@ -365,7 +400,6 @@ function _renderMapToCanvas(mapEl, param2, param3, param4) {
 }
 
 function _drawLegendOnCanvas(ctx, ovEl, scEl, mapEl, W, H) {
-  /* Gambar kotak legenda */
   if (ovEl && ovEl.style.display !== 'none') {
     const mr = mapEl.getBoundingClientRect();
     const or = ovEl.getBoundingClientRect();
@@ -373,7 +407,7 @@ function _drawLegendOnCanvas(ctx, ovEl, scEl, mapEl, W, H) {
     ctx.fillStyle = 'rgba(26,29,39,0.92)';
     ctx.strokeStyle = '#2d3250'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.roundRect(ox, oy, or.width, or.height, 7); ctx.fill(); ctx.stroke();
-    /* Items legenda */
+
     const items = ovEl.querySelectorAll('.ov-item');
     let y = oy + 22;
     const title = ovEl.querySelector('.ov-title');
@@ -398,7 +432,6 @@ function _drawLegendOnCanvas(ctx, ovEl, scEl, mapEl, W, H) {
       y += 16;
     });
   }
-  /* Skala */
   if (scEl) {
     const txt = scEl.textContent;
     ctx.fillStyle = 'rgba(26,29,39,0.85)';

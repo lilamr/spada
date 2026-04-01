@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name = "spada"
-version = "1.0.0"
+version = "1.1.0"
 description = "SpaDa — Spasial Dashboard: Aplikasi desktop untuk visualisasi data spasial interaktif"
 readme = "README.md"
 license = { text = "MIT" }

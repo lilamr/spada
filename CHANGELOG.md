@@ -5,6 +5,29 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.0] — 2026-03-30
+
+### Fitur Baru
+- **Global Filter** — Filter dari tab Atribut kini berlaku global per layer:
+  - Pivot Table, Chart, dan Visual Map otomatis hanya memproses fitur yang lolos filter
+  - Badge indikator 🔴 muncul di tab Atribut saat filter aktif
+  - Info filter aktif ditampilkan di panel Pivot dan Chart (`⚡ Filter aktif: …`)
+  - Reset filter dari tab Atribut membersihkan semua tab sekaligus
+  - Scope: per layer — filter layer A tidak mempengaruhi layer B
+- **Pivot Multi-Nilai** — Field Nilai berubah menjadi multi-select (Ctrl+klik):
+  - Tiap field nilai yang dipilih tampil sebagai kolom terpisah (mode tanpa pivot kolom)
+  - Dengan pivot kolom: tiap kombinasi kolom × field nilai jadi sub-kolom tersendiri
+  - Aksen warna berbeda per field nilai untuk memudahkan pembacaan
+  - Export CSV mendukung semua field nilai sekaligus
+- **Chart Multi-Y Grouped Bar** — Field Y berubah menjadi multi-select (Ctrl+klik):
+  - Tiap field Y yang dipilih menjadi satu dataset tersendiri
+  - Tampil sebagai grouped bar dengan warna berbeda per dataset
+  - Legenda otomatis menampilkan nama tiap dataset
+  - Sort, PNG, dan SVG export mendukung multi-dataset
+  - SVG export menyertakan legenda warna antar dataset
+
+---
+
 ## [1.0.0] — 2026-03-26
 
 ### Fitur Baru

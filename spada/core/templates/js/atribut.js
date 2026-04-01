@@ -40,6 +40,7 @@ function applyFilter(){
   activeFilter={col,op,val};
   attrFiltered=attrAll.filter(r=>matchVal(r[col],op,val));
   applyMapOpacity(layer,col,op,val);
+  setGlobalFilter(id,col,op,val);
   const opLbl=document.getElementById('filter-op').selectedOptions[0].text;
   const colLbl=document.getElementById('filter-col').selectedOptions[0].text;
   document.getElementById('sb-filter').textContent=`Filter: "${colLbl}" ${opLbl} "${val}" — ${attrFiltered.length.toLocaleString()} baris`;
@@ -51,6 +52,7 @@ function resetFilter(){
   activeFilter={col:null,op:null,val:null};attrFiltered=[...attrAll];
   document.getElementById('filter-val').value='';
   document.getElementById('sb-filter').textContent='';
+  clearGlobalFilter(id);
   resetMapOpacity(layer);renderTable(layer);
 }
 
@@ -115,5 +117,5 @@ function dlAttrCsv(){
   const id=document.getElementById('attr-lyr').value;const layer=LAYERS.find(l=>l.id===id);if(!layer||!attrFiltered.length)return;
   const tf=layer.table_fields;const header=tf.map(t=>csvEsc(t.alias)).join(',');
   const rows=attrFiltered.map(row=>tf.map(t=>csvEsc(row[t.name]??'')).join(','));
-  dlText([header,...rows].join('\\n'),'spada-atribut.csv','text/csv');
+  dlText([header,...rows].join('\n'),'spada-atribut.csv','text/csv');  // ← '\\n' diganti '\n'
 }
