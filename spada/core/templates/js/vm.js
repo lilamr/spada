@@ -135,38 +135,76 @@ function _buildVmExportOverlay(){
   const ovItems=document.getElementById('vm-ov-items');
   if(!ovItems||!vmLayer)return;
   ovItems.innerHTML='';
-  /* Tampilkan legenda berdasarkan tipe visual map dan layer yang aktif */
   const id=document.getElementById('vm-lyr').value;
   const layer=LAYERS.find(l=>l.id===id);if(!layer)return;
   const type=document.getElementById('vm-type').value;
   const valF=document.getElementById('vm-val')?.value;
   const palName=document.getElementById('vm-pal')?.value||'Blues';
   const pal=PALETTES[palName]||PALETTES.Blues;
-  if(['heatmap','cluster'].includes(type)){
+  const features=getFilteredFeatures(layer);
+
+  function addScaleRows(vals){
+    if(!vals||!vals.length)return;
+    const mn=Math.min(...vals),mx=Math.max(...vals),md=(mn+mx)/2;
+    [[mn,'min'],[md,'mid'],[mx,'max']].forEach(([v,lbl])=>{
+      const col=colorScale(Number(v),mn,mx,pal);
+      const row=document.createElement('div');row.className='ov-item';
+      row.innerHTML=`<div class="ov-swatch" style="background:${col}"></div><span>${Number(v).toFixed(1)} (${lbl})</span>`;
+      ovItems.appendChild(row);
+    });
+  }
+
+  function hexbinTotals(feats,field){
+    const res=parseFloat(document.getElementById('vm-res')?.value)||1;
+    const grid={};
+    feats.forEach(f=>{
+      if(!f.geometry)return;
+      try{
+        const c=L.geoJSON(f).getBounds().getCenter();
+        const row=Math.floor(c.lat/res),col=Math.floor(c.lng/res),key=`${row}_${col}`;
+        const v=parseFloat(f.properties?.[field]);
+        if(isNaN(v))return;
+        if(!grid[key])grid[key]=0;
+        grid[key]+=v;
+      }catch(e){}
+    });
+    return Object.values(grid);
+  }
+
+  if(type==='heatmap'){
+    [['#1d4ed8','rendah'],['#1df909','sedang'],['#f54b02','tinggi']].forEach(([col,lbl])=>{
+      const row=document.createElement('div');row.className='ov-item';
+      row.innerHTML=`<div class="ov-swatch" style="background:${col}"></div><span>${lbl}</span>`;
+      ovItems.appendChild(row);
+    });
+  }else if(type==='cluster'){
     const row=document.createElement('div');row.className='ov-item';
-    row.innerHTML=`<span>${layer.name}</span>`;ovItems.appendChild(row);
-  }else if(['proportional','cartogram','dotdensity'].includes(type)&&valF){
-    const nums=getNumVals(layer.geojson.features,valF);
-    if(nums.length){
-      const mn=Math.min(...nums),mx=Math.max(...nums);
-      [[mn,'min'],[((mn+mx)/2).toFixed(1),'mid'],[mx,'max']].forEach(([v,lbl])=>{
-        const col=colorScale(Number(v),mn,mx,pal);
-        const row=document.createElement('div');row.className='ov-item';
-        row.innerHTML=`<div class="ov-swatch" style="background:${col}"></div><span>${v} (${lbl})</span>`;
-        ovItems.appendChild(row);
-      });
-    }
+    row.innerHTML=`<div class="ov-swatch" style="background:${layer.style.fill_color||'#a855f7'}"></div><span>${features.length} titik</span>`;
+    ovItems.appendChild(row);
+    const row2=document.createElement('div');row2.className='ov-item';
+    row2.innerHTML='<span>Cluster otomatis berdasarkan zoom</span>';
+    ovItems.appendChild(row2);
+  }else if(['proportional','cartogram','dotdensity','flow'].includes(type)&&valF){
+    addScaleRows(getNumVals(features,valF));
   }else if(['choropleth','hexbin'].includes(type)&&valF){
-    const nums=getNumVals(layer.geojson.features,valF);
+    const nums=type==='hexbin'?hexbinTotals(features,valF):getNumVals(features,valF);
     if(nums.length){
-      const mn=Math.min(...nums),mx=Math.max(...nums);
+      const mn=Math.min(...nums),mx=Math.max(...nums),den=Math.max(1,pal.length-1);
       pal.forEach((col,i)=>{
-        const v=mn+(mx-mn)*i/(pal.length-1||1);
+        const v=mn+(mx-mn)*i/den;
         const row=document.createElement('div');row.className='ov-item';
         row.innerHTML=`<div class="ov-swatch" style="background:${col}"></div><span>${v.toFixed(1)}</span>`;
         ovItems.appendChild(row);
       });
     }
+  }else if(type==='timeseries'){
+    const idx=parseInt(document.getElementById('vm-slider')?.value||'0');
+    const curLabel=vmTimesteps[idx]??'N/A';
+    const timeF=document.getElementById('vm-time')?.value;
+    const activeCount=features.filter(f=>String(f.properties?.[timeF]??'N/A')===curLabel).length;
+    const row=document.createElement('div');row.className='ov-item';
+    row.innerHTML=`<span>${curLabel} · ${activeCount} fitur</span>`;
+    ovItems.appendChild(row);
   }
   const scaleLine=document.querySelector('#vmap .leaflet-control-scale-line');
   const scaleEl=document.getElementById('vm-export-scale');
@@ -196,13 +234,139 @@ function dlVmPng() {
   });
 }
 
-/* ==================== RENDER VM LAYER KE CANVAS (UPDATED) ==================== */
+/* ── Render cluster map ke canvas dengan membaca visual DOM Leaflet ── */
+function _renderClusterFromDom(ctx, leafletVmap, clusterGroup, mapRect) {
+  const container = leafletVmap.getContainer();
+
+  // Render cluster icons (lingkaran besar dengan angka)
+  const clusterEls = container.querySelectorAll('.marker-cluster');
+  clusterEls.forEach(el => {
+    const r = el.getBoundingClientRect();
+    const cx = r.left - mapRect.left + r.width / 2;
+    const cy = r.top  - mapRect.top  + r.height / 2;
+    const radius = r.width / 2;
+
+    let bgColor = '#51ac5e';
+    const innerDiv = el.querySelector('div');
+    if (innerDiv) {
+      const bg = innerDiv.style.background || innerDiv.style.backgroundColor;
+      if (bg) bgColor = bg;
+      else {
+        const computed = window.getComputedStyle(innerDiv);
+        if (computed.background) bgColor = computed.backgroundColor || bgColor;
+      }
+    }
+
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+
+    const span = el.querySelector('span');
+    if (span) {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.max(10, radius * 0.8)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(span.textContent, cx, cy);
+    }
+    ctx.restore();
+  });
+
+  // Render marker individual yang tidak ter-cluster
+  const markerEls = container.querySelectorAll('.leaflet-marker-icon:not(.marker-cluster)');
+  markerEls.forEach(el => {
+    const r = el.getBoundingClientRect();
+    const cx = r.left - mapRect.left + r.width / 2;
+    const cy = r.top  - mapRect.top  + r.height / 2;
+
+    const svg = el.querySelector('svg circle, circle');
+    let fillColor = '#6366f1';
+    if (svg) fillColor = svg.getAttribute('fill') || fillColor;
+
+    ctx.save();
+    ctx.fillStyle = fillColor;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // Fallback: render circleMarker individual jika tidak ada cluster DOM
+  if (!clusterEls.length) {
+    clusterGroup.getLayers && clusterGroup.getLayers().forEach(layer => {
+      if (!(layer instanceof L.CircleMarker)) return;
+      const ll = layer.getLatLng();
+      const pt = leafletVmap.latLngToContainerPoint(ll);
+      const opt = layer.options || {};
+      ctx.save();
+      ctx.globalAlpha = opt.fillOpacity ?? 0.85;
+      ctx.fillStyle = opt.fillColor || '#6366f1';
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, opt.radius || 6, 0, Math.PI * 2);
+      ctx.fill();
+      if (opt.weight > 0) {
+        ctx.strokeStyle = opt.color || '#ffffff';
+        ctx.lineWidth = opt.weight || 1;
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+}
+
+/* ==================== RENDER VM LAYER KE CANVAS ==================== */
 function renderVmLayerToCanvas(ctx, leafletVmap, vmLayer) {
   if (!vmLayer || !leafletVmap) return;
   const mapRect = leafletVmap.getContainer().getBoundingClientRect();
 
-  // 1. Heatmap
-  if (vmLayer instanceof L.HeatLayer) {
+  // Helper: cek apakah objek adalah LatLng
+  function isLatLng(v){
+    return v && typeof v.lat === 'number' && typeof v.lng === 'number';
+  }
+
+  // Helper: gambar segmen polyline secara rekursif (handle nested array)
+  function drawLineSegments(latlngs){
+    if(!Array.isArray(latlngs)||!latlngs.length)return;
+    if(isLatLng(latlngs[0])){
+      latlngs.forEach((ll,i)=>{
+        const p=leafletVmap.latLngToContainerPoint(ll);
+        if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
+      });
+      return;
+    }
+    latlngs.forEach(seg=>drawLineSegments(seg));
+  }
+
+  // Helper: gambar ring polygon secara rekursif (handle nested array)
+  function drawPolygonRings(latlngs){
+    if(!Array.isArray(latlngs)||!latlngs.length)return;
+    if(isLatLng(latlngs[0])){
+      const projected=latlngs.map(ll=>leafletVmap.latLngToContainerPoint(ll));
+      if(projected.length<3)return;
+      ctx.moveTo(projected[0].x,projected[0].y);
+      for(let i=1;i<projected.length;i++)ctx.lineTo(projected[i].x,projected[i].y);
+      ctx.closePath();
+      return;
+    }
+    latlngs.forEach(r=>drawPolygonRings(r));
+  }
+
+  // 1. Heatmap — baca dari canvas internal leaflet.heat
+  //    Deteksi robust: instanceof L.HeatLayer ATAU ada _canvas (vm_codex fix)
+  if ((L.HeatLayer && vmLayer instanceof L.HeatLayer) || vmLayer._canvas) {
     const heatCanvas = vmLayer._canvas;
     if (heatCanvas) {
       const r = heatCanvas.getBoundingClientRect();
@@ -213,12 +377,15 @@ function renderVmLayerToCanvas(ctx, leafletVmap, vmLayer) {
     return;
   }
 
-  // 2. Ambil semua layers (handle GeoJSON, LayerGroup, MarkerClusterGroup)
-  let layers = [];
+  // 2. Cluster — render visual cluster dari DOM (vm_claude fix)
+  if (vmLayer instanceof L.MarkerClusterGroup || (vmLayer._featureGroup !== undefined)) {
+    _renderClusterFromDom(ctx, leafletVmap, vmLayer, mapRect);
+    return;
+  }
 
-  if (vmLayer instanceof L.GeoJSON || vmLayer instanceof L.LayerGroup) {
-    layers = vmLayer.getLayers();
-  } else if (vmLayer.getLayers) {
+  // 3. Ambil semua layers (handle GeoJSON, LayerGroup)
+  let layers = [];
+  if (vmLayer.getLayers) {
     layers = vmLayer.getLayers();
   } else {
     layers = [vmLayer];
@@ -227,7 +394,7 @@ function renderVmLayerToCanvas(ctx, leafletVmap, vmLayer) {
   layers.forEach(layer => {
     const opt = layer.options || {};
 
-    // === CIRCLE MARKER (Proportional, Cartogram, Dot Density, Cluster) ===
+    // === CIRCLE MARKER (Proportional, Cartogram, Dot Density) ===
     if (layer instanceof L.CircleMarker) {
       const ll = layer.getLatLng();
       const pt = leafletVmap.latLngToContainerPoint(ll);
@@ -237,7 +404,6 @@ function renderVmLayerToCanvas(ctx, leafletVmap, vmLayer) {
       ctx.beginPath();
       ctx.arc(pt.x, pt.y, opt.radius || 8, 0, Math.PI * 2);
       ctx.fill();
-
       if (opt.weight > 0) {
         ctx.strokeStyle = opt.color || '#ffffff';
         ctx.lineWidth = opt.weight;
@@ -251,57 +417,44 @@ function renderVmLayerToCanvas(ctx, leafletVmap, vmLayer) {
       const bounds = layer.getBounds();
       const sw = leafletVmap.latLngToContainerPoint(bounds.getSouthWest());
       const ne = leafletVmap.latLngToContainerPoint(bounds.getNorthEast());
+      const x = Math.min(sw.x, ne.x), y = Math.min(sw.y, ne.y);
+      const w = Math.abs(ne.x - sw.x), h = Math.abs(ne.y - sw.y);
       ctx.save();
       ctx.globalAlpha = opt.fillOpacity ?? 0.75;
       ctx.fillStyle = opt.fillColor || '#3b82f6';
-      ctx.fillRect(sw.x, sw.y, ne.x - sw.x, ne.y - sw.y);
+      ctx.fillRect(x, y, w, h);
       if (opt.weight > 0) {
         ctx.strokeStyle = opt.color || '#fff';
         ctx.lineWidth = opt.weight;
-        ctx.strokeRect(sw.x, sw.y, ne.x - sw.x, ne.y - sw.y);
+        ctx.strokeRect(x, y, w, h);
       }
       ctx.restore();
     }
 
     // === POLYLINE (Flow) ===
     else if (layer instanceof L.Polyline) {
-      let latlngs = layer.getLatLngs();
-      const pts = latlngs.flat(Infinity).map(ll => leafletVmap.latLngToContainerPoint(ll));
+      const latlngs = layer.getLatLngs();
       ctx.save();
       ctx.strokeStyle = opt.color || '#ef4444';
       ctx.lineWidth = opt.weight || 5;
       ctx.globalAlpha = opt.opacity ?? 0.75;
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      drawLineSegments(latlngs);
       ctx.stroke();
       ctx.restore();
     }
 
     // === POLYGON (Choropleth & Timeseries) ===
     else if (layer instanceof L.Polygon) {
-      let rings = layer.getLatLngs();
-      if (!Array.isArray(rings[0])) rings = [rings];   // handle single ring
-
       ctx.save();
       ctx.globalAlpha = opt.fillOpacity ?? 0.75;
       ctx.fillStyle = opt.fillColor || '#3b82f6';
       ctx.strokeStyle = opt.color || '#ffffff';
       ctx.lineWidth = opt.weight || 1.5;
-
       ctx.beginPath();
-      rings.forEach(ring => {
-        const pts = Array.isArray(ring) ? ring : [ring];
-        const projected = pts.map(ll => leafletVmap.latLngToContainerPoint(ll));
-        if (projected.length < 3) return;
-        ctx.moveTo(projected[0].x, projected[0].y);
-        for (let i = 1; i < projected.length; i++) {
-          ctx.lineTo(projected[i].x, projected[i].y);
-        }
-        ctx.closePath();
-      });
-
+      drawPolygonRings(layer.getLatLngs());
       ctx.fill('evenodd');
       ctx.stroke();
       ctx.restore();
