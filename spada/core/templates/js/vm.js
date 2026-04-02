@@ -30,15 +30,23 @@ function updateVmFields(){
   const type=document.getElementById('vm-type').value;
   /* Semua field tersedia untuk semua selector */
   const opts=allFieldsOpts(layer);
+  const flowOpts = '<option value="">(tidak ada)</option>' + opts;
   document.getElementById('vm-val').innerHTML=opts;
   document.getElementById('vm-time').innerHTML=opts;
   document.getElementById('vm-from').innerHTML=opts;
+  document.getElementById('vm-lat-from').innerHTML=opts;
   document.getElementById('vm-to').innerHTML=opts;
+  document.getElementById('vm-lat-to').innerHTML=opts;
+  document.getElementById('vm-flow-val').innerHTML=flowOpts;
+  const isFlow = type === 'flow';
   document.getElementById('vm-val-grp').style.display=  ['heatmap','proportional','choropleth','hexbin','dotdensity','cartogram'].includes(type)?'flex':'none';
   document.getElementById('vm-time-grp').style.display= type==='timeseries'?'flex':'none';
   document.getElementById('vm-time-ctrl').style.display=type==='timeseries'?'block':'none';
-  document.getElementById('vm-from-grp').style.display= type==='flow'?'flex':'none';
-  document.getElementById('vm-to-grp').style.display=   type==='flow'?'flex':'none';
+  document.getElementById('vm-from-grp').style.display=     isFlow?'flex':'none';
+  document.getElementById('vm-lat-from-grp').style.display= isFlow?'flex':'none';
+  document.getElementById('vm-to-grp').style.display=       isFlow?'flex':'none';
+  document.getElementById('vm-lat-to-grp').style.display=   isFlow?'flex':'none';
+  document.getElementById('vm-flow-val-grp').style.display= isFlow?'flex':'none';
   document.getElementById('vm-pal-grp').style.display=  ['heatmap','proportional','choropleth','hexbin','dotdensity','cartogram','flow'].includes(type)?'flex':'none';
   document.getElementById('vm-res-grp').style.display=  type==='hexbin'?'flex':'none';
 }
@@ -118,17 +126,92 @@ function onVmSlider(idx){
   if(vmTimeLayers[t])vmTimeLayers[t].addTo(vmap);vmLayer=vmTimeLayers[t];
 }
 
-function buildFlow(features,valF,pal){
-  const nums=getNumVals(features,valF);const mx=nums.length?Math.max(...nums):1;const pts=[];
-  features.forEach(f=>{if(!f.geometry)return;try{const c=L.geoJSON(f).getBounds().getCenter();pts.push({c,v:parseFloat(f.properties?.[valF])||1})}catch(e){}});
-  const layers=[];
-  for(let i=0;i<pts.length-1;i++){
-    const w=Math.max(1,(pts[i].v/mx)*6);const col=colorScale(pts[i].v,0,mx,pal);
-    const line=L.polyline([pts[i].c,pts[i+1].c],{color:col,weight:w,opacity:.7});line.bindPopup(`<div class="ph">${numFmt(pts[i].v)}</div>`);layers.push(line);
-    const mlat=(pts[i].c.lat+pts[i+1].c.lat)/2,mlng=(pts[i].c.lng+pts[i+1].c.lng)/2;
-    layers.push(L.circleMarker([mlat,mlng],{radius:3,fillColor:col,color:col,weight:0,fillOpacity:.9}));
-  }
-  vmLayer=L.layerGroup(layers).addTo(vmap);
+function buildFlow(features, valF, pal) {
+  const lonFromF  = document.getElementById('vm-from').value;
+  const latFromF  = document.getElementById('vm-lat-from').value;
+  const lonToF    = document.getElementById('vm-to').value;
+  const latToF    = document.getElementById('vm-lat-to').value;
+  const flowValF  = document.getElementById('vm-flow-val').value;
+
+  if (!lonFromF || !latFromF || !lonToF || !latToF) return;
+
+  // Kumpulkan aliran valid
+  const flows = [];
+  features.forEach(f => {
+    const p = f.properties || {};
+    const lonA = parseFloat(p[lonFromF]), latA = parseFloat(p[latFromF]);
+    const lonB = parseFloat(p[lonToF]),   latB = parseFloat(p[latToF]);
+    if (isNaN(lonA) || isNaN(latA) || isNaN(lonB) || isNaN(latB)) return;
+    const val = flowValF ? (parseFloat(p[flowValF]) || 0) : 1;
+    flows.push({ from: [latA, lonA], to: [latB, lonB], val, props: p });
+  });
+  if (!flows.length) return;
+
+  const vals = flows.map(f => f.val);
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+
+  // Buat SVG overlay di atas peta vmap
+  // Gunakan L.svg() renderer + polyline dengan titik kurva bezier via canvas overlay
+  const layers = [];
+
+  flows.forEach(flow => {
+    const weight = mx > mn
+      ? Math.max(1, ((flow.val - mn) / (mx - mn)) * 8 + 1)
+      : 3;
+    const col = mx > mn ? colorScale(flow.val, mn, mx, pal) : pal[Math.floor(pal.length / 2)];
+
+    // Buat kurva bezier dengan titik kontrol di tengah (offset vertikal)
+    const latMid  = (flow.from[0] + flow.to[0]) / 2;
+    const lonMid  = (flow.from[1] + flow.to[1]) / 2;
+    const dLat    = flow.to[0] - flow.from[0];
+    const dLon    = flow.to[1] - flow.from[1];
+    const dist    = Math.sqrt(dLat * dLat + dLon * dLon);
+    // Offset tegak lurus untuk kurva
+    const offsetFactor = 0.25;
+    const cpLat = latMid - dLon * offsetFactor;
+    const cpLon = lonMid + dLat * offsetFactor;
+
+    // Interpolasi titik kurva bezier quadratic menjadi polyline (20 segmen)
+    const nSeg = 20;
+    const latLngs = [];
+    for (let t = 0; t <= nSeg; t++) {
+      const s = t / nSeg;
+      const lat = (1-s)*(1-s)*flow.from[0] + 2*(1-s)*s*cpLat + s*s*flow.to[0];
+      const lon = (1-s)*(1-s)*flow.from[1] + 2*(1-s)*s*cpLon + s*s*flow.to[1];
+      latLngs.push([lat, lon]);
+    }
+
+    const line = L.polyline(latLngs, {
+      color: col, weight, opacity: 0.75,
+      lineJoin: 'round', lineCap: 'round'
+    });
+
+    // Titik asal & tujuan
+    const dotFrom = L.circleMarker(flow.from, {
+      radius: 4, fillColor: col, color: '#fff', weight: 1, fillOpacity: 0.9
+    });
+    const dotTo = L.circleMarker(flow.to, {
+      radius: 5, fillColor: col, color: '#fff', weight: 1.5, fillOpacity: 1
+    });
+
+    // Tooltip
+    const tipContent = flowValF
+      ? `<div class="ph">➡ Flow</div><div class="pr"><span class="pk">Nilai</span><span class="pv">${numFmt(flow.val)}</span></div>`
+      : `<div class="ph">➡ Flow</div>`;
+    line.bindPopup(tipContent);
+    dotTo.bindPopup(tipContent);
+
+    layers.push(line, dotFrom, dotTo);
+  });
+
+  vmLayer = L.layerGroup(layers).addTo(vmap);
+
+  // Fit bounds
+  try {
+    const allPts = flows.flatMap(f => [f.from, f.to]);
+    const gl = L.polyline(allPts);
+    vmap.fitBounds(gl.getBounds().pad(0.15));
+  } catch(e) {}
 }
 
 function _buildVmExportOverlay(){
@@ -172,7 +255,7 @@ function _buildVmExportOverlay(){
   }
 
   if(type==='heatmap'){
-    [['#1d4ed8','rendah'],['#1df909','sedang'],['#f54b02','tinggi']].forEach(([col,lbl])=>{
+    [['#0000ff','Rendah'],['#00ff00','Sedang'],['#ffff00','Tinggi'],['#ff0000','Sangat Tinggi']].forEach(([col,lbl])=>{
       const row=document.createElement('div');row.className='ov-item';
       row.innerHTML=`<div class="ov-swatch" style="background:${col}"></div><span>${lbl}</span>`;
       ovItems.appendChild(row);
@@ -184,8 +267,27 @@ function _buildVmExportOverlay(){
     const row2=document.createElement('div');row2.className='ov-item';
     row2.innerHTML='<span>Cluster otomatis berdasarkan zoom</span>';
     ovItems.appendChild(row2);
-  }else if(['proportional','cartogram','dotdensity','flow'].includes(type)&&valF){
+  }else if(['proportional','cartogram','dotdensity'].includes(type)&&valF){
     addScaleRows(getNumVals(features,valF));
+  }else if(type==='flow'){
+    const flowValF = document.getElementById('vm-flow-val')?.value;
+    if(flowValF){
+      const lonFromF = document.getElementById('vm-from')?.value;
+      const latFromF = document.getElementById('vm-lat-from')?.value;
+      const lonToF   = document.getElementById('vm-to')?.value;
+      const latToF   = document.getElementById('vm-lat-to')?.value;
+      const validFlows = features.filter(f => {
+        const p = f.properties || {};
+        return !isNaN(parseFloat(p[lonFromF])) && !isNaN(parseFloat(p[latFromF])) &&
+               !isNaN(parseFloat(p[lonToF]))  && !isNaN(parseFloat(p[latToF]));
+      });
+      const nums = validFlows.map(f => parseFloat(f.properties?.[flowValF])||0).filter(v=>!isNaN(v));
+      addScaleRows(nums);
+    } else {
+      const row=document.createElement('div');row.className='ov-item';
+      row.innerHTML=`<span>${features.length} aliran</span>`;
+      ovItems.appendChild(row);
+    }
   }else if(['choropleth','hexbin'].includes(type)&&valF){
     const nums=type==='hexbin'?hexbinTotals(features,valF):getNumVals(features,valF);
     if(nums.length){
@@ -431,6 +533,21 @@ function renderVmLayerToCanvas(ctx, leafletVmap, vmLayer) {
       ctx.restore();
     }
 
+    // === POLYGON (Choropleth & Timeseries) — WAJIB sebelum Polyline
+    //     karena L.Polygon extends L.Polyline ===
+    else if (layer instanceof L.Polygon) {
+      ctx.save();
+      ctx.globalAlpha = opt.fillOpacity ?? 0.75;
+      ctx.fillStyle = opt.fillColor || '#3b82f6';
+      ctx.strokeStyle = opt.color || '#ffffff';
+      ctx.lineWidth = opt.weight || 1.5;
+      ctx.beginPath();
+      drawPolygonRings(layer.getLatLngs());
+      ctx.fill('evenodd');
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // === POLYLINE (Flow) ===
     else if (layer instanceof L.Polyline) {
       const latlngs = layer.getLatLngs();
@@ -442,20 +559,6 @@ function renderVmLayerToCanvas(ctx, leafletVmap, vmLayer) {
       ctx.lineCap = 'round';
       ctx.beginPath();
       drawLineSegments(latlngs);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // === POLYGON (Choropleth & Timeseries) ===
-    else if (layer instanceof L.Polygon) {
-      ctx.save();
-      ctx.globalAlpha = opt.fillOpacity ?? 0.75;
-      ctx.fillStyle = opt.fillColor || '#3b82f6';
-      ctx.strokeStyle = opt.color || '#ffffff';
-      ctx.lineWidth = opt.weight || 1.5;
-      ctx.beginPath();
-      drawPolygonRings(layer.getLatLngs());
-      ctx.fill('evenodd');
       ctx.stroke();
       ctx.restore();
     }
